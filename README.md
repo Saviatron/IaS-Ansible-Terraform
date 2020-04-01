@@ -28,11 +28,12 @@ terraform --version
 
 # 1. Crear Infraestructura mediante Terraform.
 
-En primer lugar, deberemos obtener el fichero con las credenciales de GCP y generar las claves ssh.
+En primer lugar, deberemos obtener el fichero con las **credenciales** de GCP y generar las **claves ssh**.
 
-Luego crearemos los siguientes ficheros de conficuración:
+Luego crearemos los siguientes ficheros de configuración:
 
 ### proveedor.tf
+Utilizaremos Google Cloud Platform.
 ````
 provider "google" {
   credentials = file("~/credentials.json")
@@ -43,6 +44,7 @@ provider "google" {
 ````
 
 ### ip.tf
+Reservaremos 3 IPs privadas y 3 IPs públicas.
 ````
 resource "google_compute_address" "ip-lb" {
   name = "ip-lb"
@@ -77,6 +79,7 @@ resource "google_compute_address" "ip-int-ws2" {
 ````
 
 ### vm.tf
+Crearemos 3 instancias (1 Balanceador de cargas y 2 Servidores web).
 ````
 resource "google_compute_instance" "lb" {
   name         = "terraform-lb"
@@ -143,6 +146,7 @@ resource "google_compute_instance" "ws2" {
 ````
 
 ### output.tf
+Mostraremos las IPs asignadas a las instancias.
 ````
 output "ip-lb" {
   value = google_compute_address.ip-lb.address
@@ -184,7 +188,22 @@ Obtendremos como salida las direcciones IPs, que serán necesarias para trabajar
 
 En primer lugar, crearemos los ficheros de configuración de Ansible:
 
+### hosts-dev
+Añadiremos aquí las IPs del "output" de Terraform.
+````
+[webservers]
+webapp1 ansible_host=x.x.x.x
+webapp2 ansible_host=x.x.x.x
+
+[loadbalancer]
+weblb ansible_host=x.x.x.x
+
+[local]
+control ansible_connection=local
+````
+
 ### ansible.cfg
+Definiremos la configuración de Ansible.
 ````
 # ansible.cfg
 
@@ -200,24 +219,10 @@ retry_files_enabled = False
 ssh_args = -o ControlMaster=no
 ````
 
-### hosts-dev
-````
-# Añadiremos aquí las IPs del "output" de Terraform.
-
-[webservers]
-webapp1 ansible_host=x.x.x.x
-webapp2 ansible_host=x.x.x.x
-
-[loadbalancer]
-weblb ansible_host=x.x.x.x
-
-[local]
-control ansible_connection=local
-````
-
 A continuación, crearemos los PlayBooks de Ansible:
 
 ### apt-update.yml
+Actualizar los servicios de las instancias.
 ````
   - hosts: webservers:loadbalancer
     become: true
@@ -227,6 +232,7 @@ A continuación, crearemos los PlayBooks de Ansible:
 ````
 
 ### install-services.yml
+Instalaremos Apache, PHP y MySQL.
 ````
   - hosts: loadbalancer
     become: true
@@ -262,6 +268,7 @@ A continuación, crearemos los PlayBooks de Ansible:
 ````
 
 ### setup-app.yml
+Copiaremos la aplicación web a los servidores web.
 ````
   - hosts: webservers
     become: true
@@ -285,6 +292,7 @@ A continuación, crearemos los PlayBooks de Ansible:
 ````
 
 ### setup-lb.yml
+Activaremos y configuraremos el Balanceador de cargas.
 ````
   - hosts: loadbalancer
     become: true
@@ -310,6 +318,7 @@ A continuación, crearemos los PlayBooks de Ansible:
 ````
 
 ### check-status.yml
+Comprobaremos el estado de los servicios.
 ````
   - hosts: webservers:loadbalancer
     become: true
@@ -323,6 +332,7 @@ A continuación, crearemos los PlayBooks de Ansible:
 ````
 
 ### all-playbooks.yml
+Ejecutaremos todos los PlayBooks definidos anteriormente.
 ````
   - import_playbook: apt-update.yml
   - import_playbook: install-services.yml
