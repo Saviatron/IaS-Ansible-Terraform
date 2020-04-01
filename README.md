@@ -10,20 +10,20 @@ En mi caso, he creado una instancia de Compute Engine en la que instalaré en pr
 - Instalar Ansible:
 
 ```
-sudo apt update
-sudo apt install software-properties-common
-sudo apt-add-repository ppa:ansible/ansible
-sudo apt install ansible
+$ sudo apt update
+$ sudo apt install software-properties-common
+$ sudo apt-add-repository ppa:ansible/ansible
+$ sudo apt install ansible
 ```
 
 
 - Instalar Terraform:
 ```
-wget https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_linux_amd64.zip
-sudo apt-get install unzip
-unzip terraform_0.12.24_linux_amd64.zip
-sudo mv terraform /usr/local/bin
-terraform --version
+$ wget https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_linux_amd64.zip
+$ sudo apt-get install unzip
+$ unzip terraform_0.12.24_linux_amd64.zip
+$ sudo mv terraform /usr/local/bin
+$ terraform --version
 ```
 
 # 1. Crear Infraestructura mediante Terraform.
@@ -35,6 +35,11 @@ Luego crearemos los siguientes ficheros de configuración:
 ### proveedor.tf
 Utilizaremos Google Cloud Platform.
 ````
+$ cd ~
+$ mkdir terraform
+$ cd terraform
+$ nano proveedor.tf
+
 provider "google" {
   credentials = file("~/credentials.json")
   project     = "stellar-psyche-268616"
@@ -46,6 +51,8 @@ provider "google" {
 ### ip.tf
 Reservaremos 3 IPs privadas y 3 IPs públicas.
 ````
+$ nano ip.tf
+
 resource "google_compute_address" "ip-lb" {
   name = "ip-lb"
 }
@@ -81,6 +88,8 @@ resource "google_compute_address" "ip-int-ws2" {
 ### vm.tf
 Crearemos 3 instancias (1 Balanceador de cargas y 2 Servidores web).
 ````
+$ nano vm.tf
+
 resource "google_compute_instance" "lb" {
   name         = "terraform-lb"
   machine_type = "n1-standard-1"
@@ -148,6 +157,8 @@ resource "google_compute_instance" "ws2" {
 ### output.tf
 Mostraremos las IPs asignadas a las instancias.
 ````
+$ nano output.tf
+
 output "ip-lb" {
   value = google_compute_address.ip-lb.address
 }
@@ -175,9 +186,10 @@ output "ip-int-ws2" {
 
 ### Para crear la Infraestructura descrita con Terraform:
 ````
-terraform init
-terraform plan
-terraform apply
+$ cd ~/terraform
+$ terraform init
+$ terraform plan
+$ terraform apply
 ````
 
 
@@ -191,6 +203,11 @@ En primer lugar, crearemos los ficheros de configuración de Ansible:
 ### hosts-dev
 Añadiremos aquí las IPs del "output" de Terraform.
 ````
+$ cd ~
+$ mkdir ansible
+$ cd ansible
+$ nano hosts-dev
+
 [webservers]
 webapp1 ansible_host=x.x.x.x
 webapp2 ansible_host=x.x.x.x
@@ -205,7 +222,7 @@ control ansible_connection=local
 ### ansible.cfg
 Definiremos la configuración de Ansible.
 ````
-# ansible.cfg
+$ nano ansible.cfg
 
 [defaults]
 inventory = ./hosts-dev
@@ -224,6 +241,10 @@ A continuación, crearemos los PlayBooks de Ansible:
 ### apt-update.yml
 Actualizar los servicios de las instancias.
 ````
+$ mkdir playbooks
+$ cd playbooks
+$ nano apt-update.yml
+
   - hosts: webservers:loadbalancer
     become: true
     tasks:
@@ -234,6 +255,8 @@ Actualizar los servicios de las instancias.
 ### install-services.yml
 Instalaremos Apache, PHP y MySQL.
 ````
+$ nano install-services.yml
+
   - hosts: loadbalancer
     become: true
     tasks:
@@ -270,6 +293,8 @@ Instalaremos Apache, PHP y MySQL.
 ### setup-app.yml
 Copiaremos la aplicación web a los servidores web.
 ````
+$ nano setup-app.yml
+
   - hosts: webservers
     become: true
     tasks:
@@ -294,6 +319,8 @@ Copiaremos la aplicación web a los servidores web.
 ### setup-lb.yml
 Activaremos y configuraremos el Balanceador de cargas.
 ````
+$ nano setup-lb.yml
+
   - hosts: loadbalancer
     become: true
     tasks:
@@ -320,6 +347,8 @@ Activaremos y configuraremos el Balanceador de cargas.
 ### check-status.yml
 Comprobaremos el estado de los servicios.
 ````
+$ nano check-status.yml
+
   - hosts: webservers:loadbalancer
     become: true
     tasks:
@@ -334,6 +363,8 @@ Comprobaremos el estado de los servicios.
 ### all-playbooks.yml
 Ejecutaremos todos los PlayBooks definidos anteriormente.
 ````
+$ nano all-playbooks.yml
+
   - import_playbook: apt-update.yml
   - import_playbook: install-services.yml
   - import_playbook: setup-app.yml
@@ -343,7 +374,8 @@ Ejecutaremos todos los PlayBooks definidos anteriormente.
 
 ### Para configurar la Infraestructura descrita con Ansible:
 ````
-ansible-playbook playbooks/all-playbooks.yml
+$ cd ~/ansible
+$ ansible-playbook playbooks/all-playbooks.yml
 ````
 
 
