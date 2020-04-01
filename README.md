@@ -50,6 +50,7 @@ provider "google" {
 
 ### ip.tf
 Reservaremos 3 IPs privadas y 3 IPs públicas.
+*Utilizaré la red y subred **default**.* 
 ````
 $ nano ip.tf
 
@@ -87,6 +88,8 @@ resource "google_compute_address" "ip-int-ws2" {
 
 ### vm.tf
 Crearemos 3 instancias (1 Balanceador de cargas y 2 Servidores web).
+*Utilizaré las IPs creadas anteriormente, en la red **default**.* 
+*Añadiré la etiqueta **http-server** para permitir el tráfico HTTP en el puerto 80.* 
 ````
 $ nano vm.tf
 
@@ -318,6 +321,7 @@ $ nano setup-app.yml
 
 ### setup-lb.yml
 Activaremos y configuraremos el Balanceador de cargas.
+*Es importante activar esos módulos, y mantener el orden. Se deben activar primero los módulos y luego modificar **proxy_balancer.conf**.*
 ````
 $ nano setup-lb.yml
 
