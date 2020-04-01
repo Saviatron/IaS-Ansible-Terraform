@@ -1,7 +1,8 @@
 # IaS-Ansible-Terraform
 
 En este repositorio se recoge la tarea propuesta sobre "Infraestructura como Código".
-Se desarrollará en Google Cloud Platform.
+
+Esta tarea se desarrollará con Google Cloud Platform.
 
 Para realizar esta tarea podemos utilizar Cloud Shell o crear una instancia de Compute Engine.
 En mi caso, he creado una instancia de Compute Engine en la que instalaré en primer lugar Terraform y Ansible:
@@ -31,7 +32,7 @@ En primer lugar, deberemos obtener el fichero con las credenciales de GCP y gene
 
 Luego crearemos los siguientes ficheros de conficuración:
 
-## proveedor.tf
+### proveedor.tf
 ````
 provider "google" {
   credentials = file("~/credentials.json")
@@ -41,7 +42,7 @@ provider "google" {
 }
 ````
 
-## ip.tf
+### ip.tf
 ````
 resource "google_compute_address" "ip-lb" {
   name = "ip-lb"
@@ -75,7 +76,7 @@ resource "google_compute_address" "ip-int-ws2" {
 }
 ````
 
-## vm.tf
+### vm.tf
 ````
 resource "google_compute_instance" "lb" {
   name         = "terraform-lb"
@@ -141,7 +142,7 @@ resource "google_compute_instance" "ws2" {
 }
 ````
 
-## output.tf
+### output.tf
 ````
 output "ip-lb" {
   value = google_compute_address.ip-lb.address
@@ -168,19 +169,22 @@ output "ip-int-ws2" {
 }
 ````
 
-Para crear la Infraestructura descrita con Terraform:
+### Para crear la Infraestructura descrita con Terraform:
 ````
 terraform init
 terraform plan
 terraform apply
 ````
+
+
 Obtendremos como salida las direcciones IPs, que serán necesarias para trabajar con Ansible.
 
 
 # 2. Configurar Infraestructura mediante Ansible.
 
 En primer lugar, crearemos los ficheros de configuración de Ansible:
-## ansible.cfg
+
+### ansible.cfg
 ````
 # ansible.cfg
 
@@ -195,7 +199,8 @@ retry_files_enabled = False
 [ssh_connection]
 ssh_args = -o ControlMaster=no
 ````
-## hosts-dev
+
+### hosts-dev
 ````
 # Añadiremos aquí las IPs del "output" de Terraform.
 
@@ -212,7 +217,7 @@ control ansible_connection=local
 
 A continuación, crearemos los PlayBooks de Ansible:
 
-## apt-update.yml
+### apt-update.yml
 ````
   - hosts: webservers:loadbalancer
     become: true
@@ -220,7 +225,8 @@ A continuación, crearemos los PlayBooks de Ansible:
       - name: Updating apt packages
         apt: name=* state=latest
 ````
-## install-services.yml
+
+### install-services.yml
 ````
   - hosts: loadbalancer
     become: true
@@ -254,7 +260,8 @@ A continuación, crearemos los PlayBooks de Ansible:
       - name: Ensure mysql starts
         service: name=mysql state=started enabled=yes
 ````
-## setup-app.yml
+
+### setup-app.yml
 ````
   - hosts: webservers
     become: true
@@ -276,7 +283,8 @@ A continuación, crearemos los PlayBooks de Ansible:
       - name: restart apache
         service: name=apache2 state=restarted
 ````
-## setup-lb.yml
+
+### setup-lb.yml
 ````
   - hosts: loadbalancer
     become: true
@@ -300,7 +308,8 @@ A continuación, crearemos los PlayBooks de Ansible:
       - name: restart apache
         service: name=apache2 state=restarted enabled=yes
 ````
-## check-status.yml
+
+### check-status.yml
 ````
   - hosts: webservers:loadbalancer
     become: true
@@ -312,7 +321,8 @@ A continuación, crearemos los PlayBooks de Ansible:
           cmd: service apache2 status
           warn: False
 ````
-## all-playbooks.yml
+
+### all-playbooks.yml
 ````
   - import_playbook: apt-update.yml
   - import_playbook: install-services.yml
@@ -321,7 +331,7 @@ A continuación, crearemos los PlayBooks de Ansible:
   - import_playbook: check-status.yml
 ````
 
-Para configurar la Infraestructura descrita con Ansible:
+### Para configurar la Infraestructura descrita con Ansible:
 ````
 ansible-playbook playbooks/all-playbooks.yml
 ````
